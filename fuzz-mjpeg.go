@@ -8,9 +8,14 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"net"
 	"net/http"
 	"path/filepath"
 	"sort"
+<<<<<<< HEAD
+=======
+	"strconv"
+>>>>>>> origin/master
 	"strings"
 	"time"
 )
@@ -19,6 +24,11 @@ var ( // command line flag variables
 	folderpath string
 	boundary   string
 	framerate  int
+<<<<<<< HEAD
+=======
+	hostname   string
+	port       int
+>>>>>>> origin/master
 	fuzzmode   bool
 )
 var ( // fuzz command line flag variables
@@ -56,11 +66,17 @@ func getFuzzFiles() {
 }
 func handler(w http.ResponseWriter, r *http.Request) {
 	//set header to multipart and describe the boundary name to be used elsewhere
+<<<<<<< HEAD
 
 	w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Transfer-Encoding", "chunked")
 
+=======
+	w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
+	w.Header().Set("Connection:", "keep-alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+>>>>>>> origin/master
 	//load file(s) from folderpath
 	files, _ := filepath.Glob(folderpath + "/*.jpeg")
 	sort.Sort(naturalsort.NaturalSort(files))
@@ -69,11 +85,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic(err)
 		}
+<<<<<<< HEAD
 
 		w.Write([]byte("\n--" + boundary + "\n"))
 
 		var length string = fmt.Sprintf("%d", len(dat))
 
+=======
+		var length string = fmt.Sprintf("%d", len(dat))
+>>>>>>> origin/master
 		if fuzzmode {
 			fuzzFramerate()
 			if len(fuzzedBoundaries) > 0 {
@@ -97,10 +117,18 @@ func init() {
 	flag.StringVar(&folderpath, "folderpath", "./1.mjpeg", "Location of jpeg files to be sent (in natural ascending order) to clients. Default: ./1.mjpeg/")
 	flag.StringVar(&boundary, "boundary", "<boundary-name>", "Name of the boundary used between frames. Default: '<boundary-name>'")
 	flag.IntVar(&framerate, "framerate", 10, "Framerate in frames per second. Default: 10")
+<<<<<<< HEAD
 	flag.BoolVar(&fuzzmode, "fuzzmode", false, "Fuzzing Switch. If this is set, All params are ignored (except folderpath) Default: false")
 	//define fuzzer command line flags
 	flag.Int64Var(&fuzz_maxlength, "fuzz_maxlength", math.MaxInt64, "Fuzzer Only: maximum reported frame length")
 	flag.StringVar(&fuzz_path, "fuzz_path", "./1.mjpeg", "Location of fuzzed response.txt and response.txt files to be sent to clients. Default: ./1.mjpeg/")
+=======
+	flag.StringVar(&hostname, "hostname", "localhost", "Hostname. Default: 'localhost'")
+	flag.IntVar(&port, "port", 8080, "Serving port Default: 8080")
+	flag.BoolVar(&fuzzmode, "fuzzmode", false, "Fuzzing Switch. If this is set, All params are ignored (except folderpath) Default: false")
+	//define fuzzer command line flags
+	flag.Int64Var(&fuzz_maxlength, "fuzz_maxlength", math.MaxInt64, "Fuzzer Only: maximum reported frame length")
+>>>>>>> origin/master
 	rand.Seed(42)
 }
 func main() {
@@ -110,5 +138,14 @@ func main() {
 		getFuzzFiles()
 	}
 	http.HandleFunc("/", handler)
+<<<<<<< HEAD
 	log.Fatal(http.ListenAndServe(":8080", nil))
+=======
+	if port > 65535 || port < 0 {
+		fmt.Printf("bad port")
+		return
+	}
+	fulladdr := net.JoinHostPort(hostname, strconv.Itoa(port))
+	log.Fatal(http.ListenAndServe(fulladdr, nil))
+>>>>>>> origin/master
 }
