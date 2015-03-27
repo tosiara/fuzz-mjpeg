@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	_"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/skarademir/naturalsort"
@@ -19,6 +20,16 @@ import (
 	"time"
 )
 
+type FuzzedFrame struct {
+	Boundary  string
+	Filepath  string
+	Framerate int
+}
+type FuzzedSession struct {
+	ResponseHeader string
+	FuzzedFrames   []FuzzedFrame
+}
+
 var ( // command line flag variables
 	folderpath string
 	boundary   string
@@ -29,7 +40,8 @@ var ( // command line flag variables
 )
 var ( // fuzz command line flag variables
 	fuzz_maxlength int64
-	fuzz_path      string
+	fuzz_datapath  string
+	fuzz_savepath  string
 )
 var (
 	fuzzedResponse   string
@@ -127,7 +139,8 @@ func init() {
 	flag.BoolVar(&fuzzmode, "fuzzmode", false, "Fuzzing Switch. If this is set, All params are ignored (except folderpath) Default: false")
 	//define fuzzer command line flags
 	flag.Int64Var(&fuzz_maxlength, "fuzz_maxlength", math.MaxInt64, "Fuzzer Only: maximum reported frame length")
-	flag.StringVar(&fuzz_path, "fuzz_path", "./1.mjpeg", "Location of fuzzed response.txt and response.txt files to be sent to clients. Default: ./1.mjpeg/")
+	flag.StringVar(&fuzz_datapath, "fuzz_datapath", "./1.mjpeg", "Location of fuzzed response.txt and boundary.txt files to be sent to clients. Default: ./1.mjpeg/")
+	flag.StringVar(&fuzz_savepath, "fuzz_savepath", "./", "Location of saved session json files. Default: current directory")
 	rand.Seed(42)
 }
 func main() {
