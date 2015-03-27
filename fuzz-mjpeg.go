@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/skarademir/naturalsort"
@@ -30,8 +32,9 @@ var ( // fuzz command line flag variables
 	fuzz_path      string
 )
 var (
-	fuzzedHeader     string
+	fuzzedResponse   string
 	fuzzedBoundaries []string
+	bufrw            bufio.ReadWriter
 )
 
 func fuzzLength(length int) string {
@@ -48,6 +51,16 @@ func fuzzFramerate() {
 	framerate = rand.Intn(359) + 1 //TODO Add a way to increase framerate range from 1-1/360
 }
 func getFuzzFiles() {
+	//get response files
+	responseFiles, _ := filepath.Glob(fuzz_path + "/*.response.txt")
+	for responseFile := range responseFiles {
+		dat, err := ioutil.ReadFile(responseFiles[responseFile])
+		if err != nil {
+			panic(err)
+		}
+		fuzzedResponse = string(dat)
+		break // can be changed to handle many files. we just pick the first one
+	}
 	//get boundary files
 	boundaryFiles, _ := filepath.Glob(fuzz_path + "/*.boundary.txt")
 	for boundaryFile := range boundaryFiles {
@@ -60,9 +73,21 @@ func getFuzzFiles() {
 }
 func handler(w http.ResponseWriter, r *http.Request) {
 	//set header to multipart and describe the boundary name to be used elsewhere
-	w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Transfer-Encoding", "chunked")
+	if fuzzmode && len(fuzzedResponse) > 0 {
+		fmt.Printf("what\n")
+		data := &bytes.Buffer{}
+		data.Write([]byte("Content-Type: multipart/x-mixed-replace;boundary=" + boundary + "\n" + fuzzedResponse))
+
+		w.Header().Write(data)
+		data.Write([]byte{'\r', '\n'})
+		w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
+
+		fmt.Printf("%#f\n", w.Header().Get(""))
+	} else {
+		w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Transfer-Encoding", "chunked")
+	}
 	//load file(s) from folderpath
 	files, _ := filepath.Glob(folderpath + "/*.jpeg")
 	sort.Sort(naturalsort.NaturalSort(files))
