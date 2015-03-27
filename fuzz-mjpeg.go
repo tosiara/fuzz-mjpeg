@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	_"encoding/json"
+	_ "encoding/json"
 	"flag"
 	"fmt"
 	"github.com/skarademir/naturalsort"
@@ -64,7 +64,7 @@ func fuzzFramerate() {
 }
 func getFuzzFiles() {
 	//get response files
-	responseFiles, _ := filepath.Glob(fuzz_path + "/*.response.txt")
+	responseFiles, _ := filepath.Glob(fuzz_datapath + "/*.response.txt")
 	for responseFile := range responseFiles {
 		dat, err := ioutil.ReadFile(responseFiles[responseFile])
 		if err != nil {
@@ -74,7 +74,7 @@ func getFuzzFiles() {
 		break // can be changed to handle many files. we just pick the first one
 	}
 	//get boundary files
-	boundaryFiles, _ := filepath.Glob(fuzz_path + "/*.boundary.txt")
+	boundaryFiles, _ := filepath.Glob(fuzz_datapath + "/*.boundary.txt")
 	for boundaryFile := range boundaryFiles {
 		dat, err := ioutil.ReadFile(boundaryFiles[boundaryFile])
 		if err != nil {
