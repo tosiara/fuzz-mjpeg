@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	_ "encoding/json"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/skarademir/naturalsort"
@@ -21,11 +21,12 @@ import (
 )
 
 type FuzzedFrame struct {
-	Boundary  string
-	Filepath  string
-	Framerate int
+	BoundaryHeader string
+	Filepath       string
+	Framerate      int
 }
 type FuzzedSession struct {
+	Boundary       string
 	ResponseHeader string
 	FuzzedFrames   []FuzzedFrame
 }
@@ -42,11 +43,13 @@ var ( // fuzz command line flag variables
 	fuzz_maxlength int64
 	fuzz_datapath  string
 	fuzz_savepath  string
+	fuzz_playmode  bool
 )
 var (
 	fuzzedResponse   string
 	fuzzedBoundaries []string
-	bufrw            bufio.ReadWriter
+
+	bufrw bufio.ReadWriter
 )
 
 func fuzzLength(length int) string {
@@ -84,49 +87,99 @@ func getFuzzFiles() {
 	}
 }
 func handler(w http.ResponseWriter, r *http.Request) {
-	//set header to multipart and describe the boundary name to be used elsewhere
-	if fuzzmode && len(fuzzedResponse) > 0 {
-		fmt.Printf("what\n")
-		data := &bytes.Buffer{}
-		data.Write([]byte("Content-Type: multipart/x-mixed-replace;boundary=" + boundary + "\n" + fuzzedResponse))
+	var Session FuzzedSession
+	//TODO clean this mess up
+	//Standard mode
+	if !fuzz_playmode {
+		Session.Boundary = boundary
+		//set header to multipart and describe the boundary name to be used elsewhere
+		if fuzzmode && len(fuzzedResponse) > 0 {
+			data := &bytes.Buffer{}
+			responseHeader := "Content-Type: multipart/x-mixed-replace;boundary=" + boundary + "\n" + fuzzedResponse
+			Session.ResponseHeader = responseHeader
+			data.Write([]byte(responseHeader))
+			w.Header().Write(data)
+			data.Write([]byte{'\r', '\n'})
+			w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
+		} else {
+			w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
+			w.Header().Set("Connection", "keep-alive")
+			w.Header().Set("Transfer-Encoding", "chunked")
+		}
+		//load file(s) from folderpath
+		files, _ := filepath.Glob(folderpath + "/*.jpeg")
+		sort.Sort(naturalsort.NaturalSort(files))
 
-		w.Header().Write(data)
-		data.Write([]byte{'\r', '\n'})
-		w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
+		for file := range files {
+			dat, err := ioutil.ReadFile(files[file])
+			if err != nil {
+				panic(err)
+			}
+			w.Write([]byte("\n--" + boundary + "\n"))
 
-		fmt.Printf("%#f\n", w.Header().Get(""))
-	} else {
-		w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+boundary) //"multipart/x-mixed-replace;boundary=<boundary-name>")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Transfer-Encoding", "chunked")
-	}
-	//load file(s) from folderpath
-	files, _ := filepath.Glob(folderpath + "/*.jpeg")
-	sort.Sort(naturalsort.NaturalSort(files))
-	for file := range files {
-		dat, err := ioutil.ReadFile(files[file])
+			var length string = fmt.Sprintf("%d", len(dat))
+			if fuzzmode {
+				var Frame FuzzedFrame
+				Frame.Filepath = files[file]
+
+				fuzzFramerate()
+				Frame.Framerate = framerate
+
+				boundaryHeader := "Content-Type: image/jpeg\nContent-length: " + fuzzLength(len(dat))
+				if len(fuzzedBoundaries) > 0 {
+					boundaryHeader = fuzzedBoundaries[file%len(fuzzedBoundaries)]
+					w.Write([]byte(boundaryHeader))
+				} else {
+					w.Write([]byte(boundaryHeader))
+				}
+				Frame.BoundaryHeader = boundaryHeader
+
+				Session.FuzzedFrames = append(Session.FuzzedFrames, Frame)
+			} else {
+				w.Write([]byte("Content-Type: image/jpeg\nContent-length: " + length))
+			}
+
+			w.Write([]byte("\r\n\r\n"))
+			w.Write(dat)
+			//Wait
+			time.Sleep(time.Second / time.Duration(framerate))
+		}
+		data, _ := json.Marshal(Session)
+		fmt.Printf("%#s", data)
+		err := ioutil.WriteFile(fuzz_savepath+"session."+strconv.FormatInt(time.Now().UnixNano(), 10)+".json", data, 0644)
 		if err != nil {
 			panic(err)
 		}
-		w.Write([]byte("\n--" + boundary + "\n"))
-
-		var length string = fmt.Sprintf("%d", len(dat))
-		if fuzzmode {
-			fuzzFramerate()
-			if len(fuzzedBoundaries) > 0 {
-				w.Write([]byte(fuzzedBoundaries[file%len(fuzzedBoundaries)]))
-			} else {
-				w.Write([]byte("Content-Type: image/jpeg\nContent-length: " + fuzzLength(len(dat))))
-			}
-
-		} else {
-			w.Write([]byte("Content-Type: image/jpeg\nContent-length: " + length))
+	} else { //playback mode
+		//load session from session.***.json file specified
+		dat, err := ioutil.ReadFile(fuzz_savepath)
+		if err != nil {
+			panic(err)
 		}
-
-		w.Write([]byte("\r\n\r\n"))
-		w.Write(dat)
-
-		time.Sleep(time.Second / time.Duration(framerate))
+		if err := json.Unmarshal(dat, &Session); err != nil {
+			panic(err)
+		}
+		//set header to multipart and describe the boundary name to be used elsewhere
+		data := &bytes.Buffer{}
+		data.Write([]byte(Session.ResponseHeader))
+		w.Header().Write(data)
+		data.Write([]byte{'\r', '\n'})
+		w.Header().Set("Content-Type", "multipart/x-mixed-replace;boundary="+Session.Boundary)
+		//load frames from session
+		for Frame := range Session.FuzzedFrames {
+			dat, err := ioutil.ReadFile(Session.FuzzedFrames[Frame].Filepath)
+			if err != nil {
+				panic(err)
+			}
+			//Write Boundary
+			w.Write([]byte("\n--" + boundary + "\n"))
+			w.Write([]byte(Session.FuzzedFrames[Frame].BoundaryHeader))
+			w.Write([]byte("\r\n\r\n"))
+			//Write Image
+			w.Write(dat)
+			//Wait
+			time.Sleep(time.Second / time.Duration(Session.FuzzedFrames[Frame].Framerate))
+		}
 	}
 }
 func init() {
@@ -141,7 +194,8 @@ func init() {
 	flag.Int64Var(&fuzz_maxlength, "fuzz_maxlength", math.MaxInt64, "Fuzzer Only: maximum reported frame length")
 	flag.StringVar(&fuzz_datapath, "fuzz_datapath", "./1.mjpeg", "Location of fuzzed response.txt and boundary.txt files to be sent to clients. Default: ./1.mjpeg/")
 	flag.StringVar(&fuzz_savepath, "fuzz_savepath", "./", "Location of saved session json files. Default: current directory")
-	rand.Seed(42)
+	flag.BoolVar(&fuzz_playmode, "fuzz_playmode", false, "Playback Switch. If this is set, the fuzz_savepath is used to load a session.*.json file follows its instructions. Default: false")
+	rand.Seed(time.Now().Unix())
 }
 func main() {
 	flag.Parse()
