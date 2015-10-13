@@ -193,7 +193,7 @@ func init() {
 	//define command line flags
 	flag.StringVar(&folderpath, "folderpath", "./1.mjpeg", "Location of jpeg files to be sent (in natural ascending order) to clients. Default: ./1.mjpeg/")
 	flag.StringVar(&boundary, "boundary", "<boundary-name>", "Name of the boundary used between frames. Default: '<boundary-name>'")
-	flag.IntVar(&framerate, "framerate", 10, "Framerate in frames per second. Default: 10")
+	flag.IntVar(&framerate, "framerate", 600, "Framerate in frames per minute. Default: 600 i.e. 10fps")
 	flag.StringVar(&hostname, "hostname", "localhost", "Hostname. Default: 'localhost'")
 	flag.IntVar(&port, "port", 8080, "Serving port Default: 8080")
 	flag.StringVar(&sessionpath, "sessionpath", "./", "Location of saved session json files. Default: current directory")
