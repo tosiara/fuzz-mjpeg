@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+var Session FuzzedSession
+
 type FuzzedFrame struct {
 	BoundaryHeader string
 	Filepath       string
@@ -147,9 +149,11 @@ func createSession(Session *FuzzedSession) {
 		Frame.BoundaryHeader = boundaryHeader
 		Frame.Framerate = framerate
 		Session.FuzzedFrames = append(Session.FuzzedFrames, Frame)
+		//fmt.Printf("added file: %s", files[file])
 	}
 }
 func handler(w http.ResponseWriter, r *http.Request) {
+	/*
 	var Session FuzzedSession
 	if playmode {
 		//load session from session.***.json file specified
@@ -165,6 +169,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Creating new session")
 		createSession(&Session)
 	}
+*/
 
 	//set header to multipart and describe the boundary name to be used elsewhere
 	data := &bytes.Buffer{}
@@ -182,8 +187,37 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("\n--" + Session.Boundary + "\n"))
 		w.Write([]byte(Session.FuzzedFrames[Frame].BoundaryHeader))
 		w.Write([]byte("\r\n\r\n"))
+
+		// fuzz jpeg contents
+
+		l := len(dat)
+		ratio := 0.001
+		j := rand.Intn(int(float64(l)*ratio))
+		//fmt.Printf("%d %d\n", l, j)
+
+		// create random sequence
+		//fmt.Printf("init seq\n")
+		seq := make([]int, l)
+		for i := 0; i < l; i++ {
+			seq[i] = i
+			//fmt.Printf("%d\n", seq[i])
+		}
+		rand.Shuffle(len(seq), func(i, j int) {seq[i], seq[j] = seq[j], seq[i]})
+
+		// change selected bytes to random values
+		for i := 0; i < j; i++ {
+			rnd := make([]byte, 1)
+			dat[seq[i]] = rnd[0]
+		}
+
 		//Write Image
-		w.Write(dat)
+		_, err = w.Write(dat)
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		//fmt.Printf("sent file: %s\n", Session.FuzzedFrames[Frame].Filepath)
+
 		//Wait
 		time.Sleep(time.Minute / time.Duration(Session.FuzzedFrames[Frame].Framerate))
 
@@ -210,6 +244,7 @@ func init() {
 }
 func main() {
 	flag.Parse()
+	createSession(&Session)
 	if generatemode {
 		for i := 0; i < generate_count; i++ {
 			var Session FuzzedSession
