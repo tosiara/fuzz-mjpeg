@@ -6,6 +6,12 @@ Create jpegs from some movie:
 ```
 ffmpeg -i movie.mp4 -vf scale=800:608 fuzz-mjpeg/out-%03d.jpeg
 ```
+Build:
+```
+go mod init fuzz
+go get github.com/skarademir/naturalsort
+go build .
+```
 Run:
 ```
 ./fuzz -folderpath=./fuzz-mjpeg/ -boundary=aaaaaaaaaaaaaaaaa -fuzzmode=false
