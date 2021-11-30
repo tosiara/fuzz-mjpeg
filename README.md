@@ -1,4 +1,19 @@
 # fuzz-mjpeg
+
+## Mjpeg fuzzer for motion
+
+Create jpegs from some movie:
+```
+ffmpeg -i movie.mp4 -vf scale=800:608 fuzz-mjpeg/out-%03d.jpeg
+```
+Run:
+```
+./fuzz -folderpath=./fuzz-mjpeg/ -boundary=aaaaaaaaaaaaaaaaa -fuzzmode=false
+```
+
+
+Original readme:
+
 ##Motion JPEG fuzzer and server written in Go
 
 ##Serving - Under Construction
