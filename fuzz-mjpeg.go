@@ -191,7 +191,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		// fuzz jpeg contents
 
 		l := len(dat)
-		ratio := 0.001
+		ratio := 0.05
 		j := rand.Intn(int(float64(l)*ratio))
 		//fmt.Printf("%d %d\n", l, j)
 
@@ -207,6 +207,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		// change selected bytes to random values
 		for i := 0; i < j; i++ {
 			rnd := make([]byte, 1)
+			//rand.Seed(time.Now().UnixNano())
+			rnd[0] = byte(rand.Intn(256))
+			fmt.Printf("%d %d %d=%d\n", i, seq[i], dat[seq[i]], rnd[0])
 			dat[seq[i]] = rnd[0]
 		}
 
@@ -216,7 +219,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			break
 		}
-		//fmt.Printf("sent file: %s\n", Session.FuzzedFrames[Frame].Filepath)
+		fmt.Printf("sent file: %s\n", Session.FuzzedFrames[Frame].Filepath)
 
 		//Wait
 		time.Sleep(time.Minute / time.Duration(Session.FuzzedFrames[Frame].Framerate))
