@@ -1,6 +1,6 @@
-# fuzz-mjpeg
+# motion-fuzz-mjpeg
 
-## Mjpeg fuzzer for motion
+## MJPEG fuzzer for motion
 
 Create jpegs from some movie:
 ```
@@ -16,9 +16,11 @@ Run:
 ```
 ./fuzz -folderpath=./fuzz-mjpeg/ -boundary=aaaaaaaaaaaaaaaaa -fuzzmode=false
 ```
-
+Adjust amount of changed bytes (in percent) here: https://github.com/tosiara/motion-fuzz-mjpeg/blob/master/fuzz-mjpeg.go#L194
 
 Original readme:
+
+---------------------------
 
 ##Motion JPEG fuzzer and server written in Go
 
